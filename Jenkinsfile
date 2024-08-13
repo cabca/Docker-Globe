@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        GIT_REPO = 'https://github.com/mihai-pruna/Docker-Globe.git'
-        AWS_REGION = 'eu-central-1'
+        GIT_REPO = 'https://github.com/cabca/Docker-Globe.git'
+        AWS_REGION = 'us-east-1'
         ECR_REGISTRY = 'xxxxx'
         ECR_REPOSITORY = 'global-image'
         DOCKER_IMAGE_NAME = 'globe-image'
