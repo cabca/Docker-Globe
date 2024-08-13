@@ -4,7 +4,7 @@ pipeline {
     environment {
         GIT_REPO = 'https://github.com/cabca/Docker-Globe.git'
         AWS_REGION = 'us-east-1'
-        ECR_REGISTRY = '851725429887.dkr.ecr.us-east-1.amazonaws.com/'
+        ECR_REGISTRY = '851725429887.dkr.ecr.us-east-1.amazonaws.com'
         ECR_REPOSITORY = 'global-image'
         DOCKER_IMAGE_NAME = 'globe-image'
         repoDir = "Docker-Globe"
