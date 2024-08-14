@@ -4,13 +4,15 @@ pipeline {
     stages {
         stage('Cloning the GitHub repository') {
             steps {
-                withCredentials([string(credentialsId: 'GITHUB_REPOSITORY', variable: 'GITHUB_REPOSITORY')]) {
+                withCredentials([
+                    string(credentialsId: 'GITHUB_REPOSITORY', variable: 'GITHUB_REPOSITORY')
+                ]) {
                     script {
                         sh """
-                            if [ ! -d "${env.JENKINS_SERVER_DIRECTORY_NAME}" ]; then
-                                git clone ${env.GITHUB_REPOSITORY} ${env.JENKINS_SERVER_DIRECTORY_NAME}
+                            if [ ! -d "$JENKINS_SERVER_DIRECTORY_NAME" ]; then
+                                git clone "$GITHUB_REPOSITORY" "$JENKINS_SERVER_DIRECTORY_NAME"
                             else
-                                cd ${env.JENKINS_SERVER_DIRECTORY_NAME} && git pull
+                                cd "$JENKINS_SERVER_DIRECTORY_NAME" && git pull
                             fi
                         """
                     }
@@ -18,6 +20,7 @@ pipeline {
             }
         }
         
+        // Bypass pull limits from DockerHub by authenticating
         stage('Logging into DockerHub') {
             steps {
                 withCredentials([
@@ -31,8 +34,10 @@ pipeline {
 
         stage('Building the Docker image') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')]) {
-                    dir("${env.JENKINS_SERVER_DIRECTORY_NAME}") {
+                withCredentials([
+                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')
+                ]) {
+                    dir("$JENKINS_SERVER_DIRECTORY_NAME") {
                         sh 'docker build -t $DOCKER_IMAGE .'
                     }
                 }
@@ -41,8 +46,10 @@ pipeline {
 
         stage('Testing the Docker image') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')]) {
-                    dir("${env.JENKINS_SERVER_DIRECTORY_NAME}") {
+                withCredentials([
+                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')
+                ]) {
+                    dir("$JENKINS_SERVER_DIRECTORY_NAME") {
                         sh '''
                             docker run -itd -p 80:80 $DOCKER_IMAGE /bin/sh -c "netstat -antp | grep nginx || exit 1"
                             docker rm -f $(docker ps -aq)
