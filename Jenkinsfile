@@ -34,8 +34,10 @@ pipeline {
 
         stage('Building the Docker image') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')]) {
-                    dir(JENKINS_SERVER_DIRECTORY_NAME) {
+                withCredentials([
+                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')
+                ]) {
+                    dir("${env.JENKINS_SERVER_DIRECTORY_NAME}") {
                         sh 'docker build -t $DOCKER_IMAGE_NAME .'
                     }
                 }
@@ -44,8 +46,10 @@ pipeline {
 
         stage('Testing the Docker image') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')]) {
-                    dir(JENKINS_SERVER_DIRECTORY_NAME) {
+                withCredentials([
+                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')
+                ]) {
+                    dir("${env.JENKINS_SERVER_DIRECTORY_NAME}") {
                         sh '''
                             docker run -itd -p 80:80 $DOCKER_IMAGE_NAME /bin/sh -c "netstat -antp | grep nginx || exit 1"
                             docker rm -f $(docker ps -aq)
