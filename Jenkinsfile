@@ -34,9 +34,9 @@ pipeline {
 
         stage('Building the Docker image') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')]) {
-                    dir(env.JENKINS_SERVER_DIRECTORY_NAME) {
-                        sh 'docker build -t $DOCKER_IMAGE .'
+                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')]) {
+                    dir(JENKINS_SERVER_DIRECTORY_NAME) {
+                        sh 'docker build -t $DOCKER_IMAGE_NAME .'
                     }
                 }
             }
@@ -44,10 +44,10 @@ pipeline {
 
         stage('Testing the Docker image') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')]) {
-                    dir(env.JENKINS_SERVER_DIRECTORY_NAME) {
+                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')]) {
+                    dir(JENKINS_SERVER_DIRECTORY_NAME) {
                         sh '''
-                            docker run -itd -p 80:80 $DOCKER_IMAGE /bin/sh -c "netstat -antp | grep nginx || exit 1"
+                            docker run -itd -p 80:80 $DOCKER_IMAGE_NAME /bin/sh -c "netstat -antp | grep nginx || exit 1"
                             docker rm -f $(docker ps -aq)
                         '''
                     }
@@ -72,16 +72,16 @@ pipeline {
         stage('Deploying the Docker image to AWS ECR') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'AWS_REGION', variable: 'REGION'),
-                    string(credentialsId: 'AWS_ECR_REGISTRY', variable: 'ECR_REGISTRY'),
-                    string(credentialsId: 'AWS_ECR_REPOSITORY', variable: 'ECR_REPO'),
+                    string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION'),
+                    string(credentialsId: 'AWS_ECR_REGISTRY', variable: 'AWS_ECR_REGISTRY'),
+                    string(credentialsId: 'AWS_ECR_REPOSITORY', variable: 'AWS_ECR_REPOSITORY'),
                     usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
-                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')
+                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE_NAME')
                 ]) {
                     sh '''
-                        aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
-                        docker tag $DOCKER_IMAGE:latest $ECR_REGISTRY/$ECR_REPO:latest
-                        docker push $ECR_REGISTRY/$ECR_REPO:latest
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REGISTRY
+                        docker tag $DOCKER_IMAGE_NAME:latest $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest
+                        docker push $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest
                     '''
                 }
             }
