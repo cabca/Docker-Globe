@@ -9,10 +9,10 @@ pipeline {
                 ]) {
                     script {
                         sh """
-                            if [ ! -d "$JENKINS_SERVER_DIRECTORY_NAME" ]; then
-                                git clone "$GITHUB_REPOSITORY" "$JENKINS_SERVER_DIRECTORY_NAME"
+                            if [ ! -d $JENKINS_SERVER_DIRECTORY_NAME ]; then
+                                git clone $GITHUB_REPOSITORY $JENKINS_SERVER_DIRECTORY_NAME
                             else
-                                cd "$JENKINS_SERVER_DIRECTORY_NAME" && git pull
+                                cd $JENKINS_SERVER_DIRECTORY_NAME && git pull
                             fi
                         """
                     }
