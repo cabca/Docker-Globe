@@ -4,11 +4,11 @@ pipeline {
     stages {
         stage('Cloning the GitHub repository') {
             steps {
-                withCredentials([string(credentialsId: 'GITHUB_REPOSITORY', variable: 'GITHUB_REPO')]) {
+                withCredentials([string(credentialsId: 'GITHUB_REPOSITORY', variable: 'GITHUB_REPOSITORY')]) {
                     script {
                         sh """
                             if [ ! -d "${env.JENKINS_SERVER_DIRECTORY_NAME}" ]; then
-                                git clone ${GITHUB_REPO} ${env.JENKINS_SERVER_DIRECTORY_NAME}
+                                git clone ${env.GITHUB_REPOSITORY} ${env.JENKINS_SERVER_DIRECTORY_NAME}
                             else
                                 cd ${env.JENKINS_SERVER_DIRECTORY_NAME} && git pull
                             fi
