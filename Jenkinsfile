@@ -7,7 +7,7 @@ pipeline {
 
         // AWS variables
         AWS_REGION = credentials('AWS_REGION')
-        AWS_ECR_REGISTRY = credentials('AWS_AWS_ECR_REGISTRY')
+        AWS_ECR_REGISTRY = credentials('AWS_ECR_REGISTRY')
         AWS_ECR_REPOSITORY = credentials('AWS_ECR_REPOSITORY')
 
         // DockerHub variables
