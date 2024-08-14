@@ -1,60 +1,51 @@
 pipeline {
     agent any
 
-    environment {
-        // GitHub variables
-        GITHUB_REPOSITORY = credentials('GITHUB_REPOSITORY')
-
-        // AWS variables
-        AWS_REGION = credentials('AWS_REGION')
-        AWS_ECR_REGISTRY = credentials('AWS_ECR_REGISTRY')
-        AWS_ECR_REPOSITORY = credentials('AWS_ECR_REPOSITORY')
-
-        // DockerHub variables
-        DOCKER_ID = credentials('DOCKER_ID')
-        DOCKER_PASSWORD = credentials('DOCKER_PASSWORD')
-        
-        // Jenkins server variables
-        DOCKER_IMAGE_NAME = credentials('DOCKER_IMAGE_NAME')
-        JENKINS_SERVER_DIRECTORY_NAME = credentials('JENKINS_SERVER_DIRECTORY_NAME')
-    }
-    
     stages {
         stage('Cloning the GitHub repository') {
             steps {
-                script {
-                    sh """
-                        if [ ! -d "${JENKINS_SERVER_DIRECTORY_NAME}" ]; then
-                            git clone ${GITHUB_REPOSITORY} ${JENKINS_SERVER_DIRECTORY_NAME}
-                        else
-                            cd ${JENKINS_SERVER_DIRECTORY_NAME} && git pull
-                        fi
-                    """
+                withCredentials([string(credentialsId: 'GITHUB_REPOSITORY', variable: 'GITHUB_REPO')]) {
+                    script {
+                        sh """
+                            if [ ! -d "${env.JENKINS_SERVER_DIRECTORY_NAME}" ]; then
+                                git clone ${GITHUB_REPO} ${env.JENKINS_SERVER_DIRECTORY_NAME}
+                            else
+                                cd ${env.JENKINS_SERVER_DIRECTORY_NAME} && git pull
+                            fi
+                        """
+                    }
                 }
             }
         }
         
         stage('Logging into DockerHub') {
             steps {
-                // Bypass pull limits from DockerHub by authenticating
-                sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_ID --password-stdin'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_ID', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_ID --password-stdin'
+                }
             }
         }
 
         stage('Building the Docker image') {
             steps {
-                dir("${JENKINS_SERVER_DIRECTORY_NAME}") {
-                    sh 'docker build -t ${DOCKER_IMAGE_NAME} .'
+                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')]) {
+                    dir("${env.JENKINS_SERVER_DIRECTORY_NAME}") {
+                        sh 'docker build -t $DOCKER_IMAGE .'
+                    }
                 }
             }
         }
 
         stage('Testing the Docker image') {
             steps {
-                dir("${JENKINS_SERVER_DIRECTORY_NAME}") {
-                    sh 'docker run -itd -p 80:80 ${DOCKER_IMAGE_NAME} /bin/sh -c "netstat -antp | grep nginx || exit 1"'
-                    sh 'docker rm -f $(docker ps -aq)'
-                }    
+                withCredentials([string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')]) {
+                    dir("${env.JENKINS_SERVER_DIRECTORY_NAME}") {
+                        sh '''
+                            docker run -itd -p 80:80 $DOCKER_IMAGE /bin/sh -c "netstat -antp | grep nginx || exit 1"
+                            docker rm -f $(docker ps -aq)
+                        '''
+                    }
+                }
             }
         }
         
@@ -68,16 +59,24 @@ pipeline {
                     else
                         aws --version
                     fi
-                  """
-                }
+                """
             }
+        }
 
         stage('Deploying the Docker image to AWS ECR') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh 'aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_REGISTRY}'
-                    sh 'docker tag ${DOCKER_IMAGE_NAME}:latest ${AWS_ECR_REGISTRY}/${AWS_ECR_REPOSITORY}:latest'
-                    sh 'docker push ${AWS_ECR_REGISTRY}/${AWS_ECR_REPOSITORY}:latest'
+                withCredentials([
+                    string(credentialsId: 'AWS_REGION', variable: 'REGION'),
+                    string(credentialsId: 'AWS_ECR_REGISTRY', variable: 'ECR_REGISTRY'),
+                    string(credentialsId: 'AWS_ECR_REPOSITORY', variable: 'ECR_REPO'),
+                    usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
+                    string(credentialsId: 'DOCKER_IMAGE_NAME', variable: 'DOCKER_IMAGE')
+                ]) {
+                    sh '''
+                        aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+                        docker tag $DOCKER_IMAGE:latest $ECR_REGISTRY/$ECR_REPO:latest
+                        docker push $ECR_REGISTRY/$ECR_REPO:latest
+                    '''
                 }
             }
         }
