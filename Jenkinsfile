@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // GitHub variables
-        GIT_REPO = 'https://github.com/cabca/Docker-Globe.git'
+        GITHUB_REPOSITORY = credentials('GITHUB_REPOSITORY')
 
         // AWS variables
         AWS_REGION = credentials('AWS_REGION')
@@ -14,35 +14,35 @@ pipeline {
         DOCKER_ID = credentials('DOCKER_ID')
         DOCKER_PASSWORD = credentials('DOCKER_PASSWORD')
         
-        // Jnekins server variables
+        // Jenkins server variables
         DOCKER_IMAGE_NAME = credentials('DOCKER_IMAGE_NAME')
-        repoDir = "Docker-Globe"
+        JENKINS_SERVER_DIRECTORY_NAME = credentials('JENKINS_SERVER_DIRECTORY_NAME')
     }
     
     stages {
-        stage ('Git Clone') {
+        stage ('Cloning the GitHub repository') {
             steps {
                 script {
-                    // def repoDir = "${GIT_REPO}".replaceAll('https://', '').replaceAll('/', '-')
+                    // def JENKINS_SERVER_DIRECTORY_NAME = "${GITHUB_REPOSITORY}".replaceAll('https://', '').replaceAll('/', '-')
                     sh """
-                        if [ ! -d "${repoDir}" ]; then
-                            git clone ${GIT_REPO}
+                        if [ ! -d "${JENKINS_SERVER_DIRECTORY_NAME}" ]; then
+                            git clone ${GITHUB_REPOSITORY}
                         else
-                            cd ${repoDir} && git pull
+                            cd ${JENKINS_SERVER_DIRECTORY_NAME} && git pull
                         fi
                     """
                 }
             }
         }
         
-        stage('DockerHub login') {
+        stage('Loging into DockerHub') {
             steps {
                 // This is to bypass the number of times you can pull from DockerHun without authentication
                 sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_ID --password-stdin'
             }
         }
 
-        stage('Build') {
+        stage('Building the Docker image') {
             steps {
                 dir("${repoDir}") {
                     sh ' docker build -t ${DOCKER_IMAGE_NAME} .'
@@ -50,7 +50,7 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Testing the Docker image') {
             steps {
                 dir("${repoDir}") {
                     sh 'docker run -itd -p 80:80 ${DOCKER_IMAGE_NAME}  /bin/sh -c "netstat -antp | grep nginx || exit 1"'
@@ -59,7 +59,7 @@ pipeline {
             }
         }
         
-        stage('Install AWS CLI if missing') {
+        stage('Installing the AWS CLI if not installed already') {
             steps {
                 sh """
                     if ! which aws &> /dev/null; then
@@ -73,7 +73,7 @@ pipeline {
                 }
             }
 
-        stage('Deploy to ECR') {
+        stage('Deploying the Docker image to AWS ECR') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     sh 'aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_REGISTRY}'
