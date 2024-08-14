@@ -20,13 +20,12 @@ pipeline {
     }
     
     stages {
-        stage ('Cloning the GitHub repository') {
+        stage('Cloning the GitHub repository') {
             steps {
                 script {
-                    // def JENKINS_SERVER_DIRECTORY_NAME = "${GITHUB_REPOSITORY}".replaceAll('https://', '').replaceAll('/', '-')
                     sh """
                         if [ ! -d "${JENKINS_SERVER_DIRECTORY_NAME}" ]; then
-                            git clone ${GITHUB_REPOSITORY}
+                            git clone ${GITHUB_REPOSITORY} ${JENKINS_SERVER_DIRECTORY_NAME}
                         else
                             cd ${JENKINS_SERVER_DIRECTORY_NAME} && git pull
                         fi
@@ -35,25 +34,25 @@ pipeline {
             }
         }
         
-        stage('Loging into DockerHub') {
+        stage('Logging into DockerHub') {
             steps {
-                // This is to bypass the number of times you can pull from DockerHun without authentication
+                // Bypass pull limits from DockerHub by authenticating
                 sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_ID --password-stdin'
             }
         }
 
         stage('Building the Docker image') {
             steps {
-                dir("${repoDir}") {
-                    sh ' docker build -t ${DOCKER_IMAGE_NAME} .'
+                dir("${JENKINS_SERVER_DIRECTORY_NAME}") {
+                    sh 'docker build -t ${DOCKER_IMAGE_NAME} .'
                 }
             }
         }
 
         stage('Testing the Docker image') {
             steps {
-                dir("${repoDir}") {
-                    sh 'docker run -itd -p 80:80 ${DOCKER_IMAGE_NAME}  /bin/sh -c "netstat -antp | grep nginx || exit 1"'
+                dir("${JENKINS_SERVER_DIRECTORY_NAME}") {
+                    sh 'docker run -itd -p 80:80 ${DOCKER_IMAGE_NAME} /bin/sh -c "netstat -antp | grep nginx || exit 1"'
                     sh 'docker rm -f $(docker ps -aq)'
                 }    
             }
@@ -65,9 +64,9 @@ pipeline {
                     if ! which aws &> /dev/null; then
                         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
                         unzip -o awscliv2.zip
-                        sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+                        ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
                     else
-                    aws --version
+                        aws --version
                     fi
                   """
                 }
